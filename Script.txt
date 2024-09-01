@@ -1,0 +1,154 @@
+// ==UserScript==
+// @name         GitHub Repo Quick Access
+// @namespace    http://tampermonkey.net/
+// @version      1.0
+// @description  Adds a menu to access recent and favorite GitHub repos along with some quick links
+// @author       Stingray18
+// @match        https://github.com/*
+// @icon         https://github.githubassets.com/favicons/favicon.svg
+// @grant        GM_xmlhttpRequest
+// @connect      api.github.com
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    // Set your GitHub username here
+    const username = 'username';
+
+    // Replace with your Personal Access Token if you want to access private repositories
+    const personalAccessToken = ''; // Leave empty for public repos only
+
+    // Variables for your favorite repos
+    const favoriteRepos = [
+        `https://github.com/${username}/repo1`,
+        `https://github.com/${username}/repo2`,
+        `https://github.com/${username}/repo3`,
+        `https://github.com/${username}/repo4`,
+        `https://github.com/${username}/repo5`
+    ];
+
+    // Add the menu icon to the bottom left
+    const menuIcon = document.createElement('div');
+    menuIcon.style.position = 'fixed';
+    menuIcon.style.bottom = '10px';
+    menuIcon.style.left = '10px';
+    menuIcon.style.width = '50px';
+    menuIcon.style.height = '50px';
+    menuIcon.style.backgroundColor = '#24292e'; // Black background
+    menuIcon.style.borderRadius = '50%';
+    menuIcon.style.cursor = 'pointer';
+    menuIcon.style.zIndex = '1000';
+
+    // Adding the SVG icon to the menu icon
+    menuIcon.innerHTML = `
+        <svg width="32" height="32" viewBox="0 0 16 16" fill="white" xmlns="http://www.w3.org/2000/svg" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+            <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.6.4.07.55-.17.55-.38v-1.33c-2.23.48-2.7-1.08-2.7-1.08-.36-.92-.88-1.17-.88-1.17-.72-.49.05-.48.05-.48.8.06 1.22.82 1.22.82.71 1.22 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.58.82-2.14-.08-.2-.36-1.01.08-2.1 0 0 .67-.21 2.2.82.68-.19 1.37-.28 2.06-.28.68 0 1.37.09 2.06.28 1.53-1.03 2.2-.82 2.2-.82.44 1.09.16 1.9.08 2.1.51.56.82 1.27.82 2.14 0 3.07-1.87 3.75-3.65 3.95.29.25.54.74.54 1.49v2.21c0 .21.15.46.55.38A8 8 0 0016 8c0-4.42-3.58-8-8-8z"/>
+        </svg>
+    `;
+    document.body.appendChild(menuIcon);
+
+    // Create the modal
+    const modal = document.createElement('div');
+    modal.style.display = 'none';
+    modal.style.position = 'fixed';
+    modal.style.bottom = '70px';
+    modal.style.left = '10px';
+    modal.style.width = '300px';
+    modal.style.padding = '15px';
+    modal.style.backgroundColor = '#f6f8fa';
+    modal.style.boxShadow = '0px 4px 8px rgba(0, 0, 0, 0.2)';
+    modal.style.borderRadius = '5px';
+    modal.style.zIndex = '1000';
+    document.body.appendChild(modal);
+
+    // Function to populate the modal with repos
+    function populateModal(repos) {
+        modal.innerHTML = '<h3>Recent Repos</h3>';
+        repos.forEach(repo => {
+            const link = document.createElement('a');
+            link.href = repo.html_url;
+            link.textContent = repo.name;
+            link.style.display = 'block';
+            link.style.marginBottom = '5px';
+            modal.appendChild(link);
+        });
+
+        modal.innerHTML += '<h3>Favorite Repos</h3>';
+        favoriteRepos.forEach(url => {
+            const link = document.createElement('a');
+            link.href = url;
+            link.textContent = url.split('/').pop();
+            link.style.display = 'block';
+            link.style.marginBottom = '5px';
+            modal.appendChild(link);
+        });
+
+        modal.innerHTML += '<h3>Quick Links</h3>';
+        const quickLinks = [
+            { name: "Developer Settings", url: "https://github.com/settings/apps" },
+            { name: "SSH & GPG Keys", url: "https://github.com/settings/keys" },
+            { name: "Your Gists", url: `https://gist.github.com/${username}` }
+        ];
+        
+        quickLinks.forEach(link => {
+            const anchor = document.createElement('a');
+            anchor.href = link.url;
+            anchor.textContent = link.name;
+            anchor.style.display = 'block';
+            anchor.style.marginBottom = '5px';
+            modal.appendChild(anchor);
+        });
+
+        const allReposLink = document.createElement('a');
+        allReposLink.href = `https://github.com/${username}?tab=repositories`;
+        allReposLink.textContent = "View All Repositories";
+        allReposLink.style.display = 'block';
+        allReposLink.style.marginTop = '10px';
+        modal.appendChild(allReposLink);
+    }
+
+    // Function to fetch repositories using GitHub API
+    function fetchRepositories() {
+        const apiUrl = personalAccessToken
+            ? "https://api.github.com/user/repos?sort=pushed&direction=desc&per_page=5"
+            : `https://api.github.com/users/${username}/repos?sort=pushed&direction=desc&per_page=5`;
+
+        const headers = {
+            "Accept": "application/vnd.github.v3+json"
+        };
+
+        if (personalAccessToken) {
+            headers["Authorization"] = "token " + personalAccessToken;
+        }
+
+        GM_xmlhttpRequest({
+            method: "GET",
+            url: apiUrl,
+            headers: headers,
+            onload: function(response) {
+                const repos = JSON.parse(response.responseText);
+                populateModal(repos);
+            }
+        });
+    }
+
+    // Fetch the repositories
+    fetchRepositories();
+
+    // Toggle modal visibility on menu icon click
+    menuIcon.addEventListener('click', function() {
+        if (modal.style.display === 'none') {
+            modal.style.display = 'block';
+        } else {
+            modal.style.display = 'none';
+        }
+    });
+
+    // Hide modal if clicked outside
+    document.addEventListener('click', function(event) {
+        if (!menuIcon.contains(event.target) && !modal.contains(event.target)) {
+            modal.style.display = 'none';
+        }
+    });
+})();
