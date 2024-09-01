@@ -3,7 +3,7 @@
 // @namespace    http://tampermonkey.net/
 // @version      1.0
 // @description  Adds a menu to access recent and favorite GitHub repos along with some quick links
-// @author       Stingray18
+// @author       Stingray82
 // @match        https://github.com/*
 // @icon         https://github.githubassets.com/favicons/favicon.svg
 // @grant        GM_xmlhttpRequest
